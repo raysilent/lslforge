@@ -64,6 +64,7 @@ import Data.Generics.Extras.Schemes
 import Data.Data(Data,Typeable)
 import Data.List(find,sort,sortBy,nub,foldl',nubBy,deleteFirstsBy)
 import qualified Data.Map as M
+import qualified Data.Set as DS
 import Data.Maybe(isJust,isNothing)
 import Language.Lsl.Internal.Util(ctx,findM,lookupM,filtMap,throwStrError)
 import Control.Monad(when,foldM,MonadPlus(..))
@@ -288,7 +289,7 @@ data ValidationState = ValidationState {
         vsFuncs :: ![Ctx Func],
         vsErr :: !CodeErrs,
         vsWarn :: !CodeErrs,
-        vsNamesUsed :: [String],
+        vsNamesUsed :: !(DS.Set String),
         vsGVs :: ![Var],
         vsGFs :: ![FuncDec],
         vsStateNames :: ![String],
@@ -298,7 +299,7 @@ data ValidationState = ValidationState {
         vsImports :: ![(String,[(String,String)],String)],
         vsContext :: [Maybe SourceContext]
     }
-    
+
 emptyValidationState = ValidationState {
     vsLib = [], 
     vsGlobalRegistry = M.empty,
@@ -312,7 +313,7 @@ emptyValidationState = ValidationState {
     vsFuncs = [],
     vsErr = CodeErrs [], 
     vsWarn = CodeErrs [], 
-    vsNamesUsed = [], 
+    vsNamesUsed = DS.fromList (map (\ (name, t, ts) -> name) funcSigs), 
     vsGVs = [], 
     vsGFs = [], 
     vsStateNames = [], 
@@ -395,7 +396,7 @@ vsmAddLocal ctx v@(Var name _) = do
 vsmAddImport imp = get'vsImports >>= put'vsImports . (imp:)
 
 vsmAddToNamesUsed :: String -> VState ()
-vsmAddToNamesUsed name = get'vsNamesUsed >>= put'vsNamesUsed . (name :)
+vsmAddToNamesUsed name = get'vsNamesUsed >>= put'vsNamesUsed . (DS.insert name)
 
 vsmWithNewScope :: VState a -> VState a
 vsmWithNewScope action = do
@@ -535,7 +536,7 @@ compileGlob (GV v mexpr) = do
     when (isConstant $ varName v') (vsmAddErr (srcCtx v, varName v' ++ " is a predefined constant"))
     namesUsed <- get'vsNamesUsed
     gvs <- get'vsGVs
-    when (varName v' `elem` namesUsed) (vsmAddErr (srcCtx v, varName v' ++ " is already defined"))
+    when (varName v' `DS.member` namesUsed) (vsmAddErr (srcCtx v, varName v' ++ " is already defined"))
     whenJust mexpr $ \ expr -> do
        let (_,gvs') = break (\ var -> varName var == varName v') gvs
        mt <- compileCtxSimple (drop 1 gvs') expr
@@ -547,7 +548,7 @@ compileGlob (GF cf@(Ctx ctx f@(Func (FuncDec name t params) statements))) =
     vsmWithNewScope $ do
         compileParams params
         vsmInEntryPoint t False $ do
-            whenM ((return elem) `ap` (return $ ctxItem name) `ap` get'vsNamesUsed) (vsmAddErr (srcCtx name, ctxItem name ++ " is already defined"))
+            whenM ((return DS.member) `ap` (return $ ctxItem name) `ap` get'vsNamesUsed) (vsmAddErr (srcCtx name, ctxItem name ++ " is already defined"))
             returns <- compileStatements statements
             when (not returns && t /= LLVoid) (vsmAddErr (srcCtx name, ctxItem name ++ ": not all code paths return a value"))
             vsmRegisterFunc f
@@ -576,9 +577,9 @@ rewriteGlob' prefix renames vars (GF (Ctx ctx (Func (FuncDec name t params) stat
         Nothing -> vsmAddErr (srcCtx name, "can't rename " ++ ctxItem name ++ ": not found")
         Just name' -> do
             namesUsed <- get'vsNamesUsed
-            if name' `elem` namesUsed 
+            if name' `DS.member` namesUsed 
                 then  vsmAddErr (srcCtx name, name' ++ " imported from module is already defined")
-                else let rewrittenFunc = (Func (FuncDec (Ctx (srcCtx name) name') t params) $ rewriteStatements 0 renames statements)
+                else let rewrittenFunc = (Func (FuncDec (Ctx (srcCtx name) name') t params) $ rewriteStatements 0 (removeLocals params renames) statements)
                      in do  vsmAddToNamesUsed name'
                             vsmRegisterFunc rewrittenFunc
                             vsmAddFunc (Ctx ctx rewrittenFunc)
@@ -587,7 +588,7 @@ rewriteGlob' prefix renames vars (GV (Ctx ctx (Var name t)) mexpr) =
         Nothing -> vsmAddErr (ctx, "can't rename " ++ name ++ ": not found")
         Just name' -> do
             namesUsed <- get'vsNamesUsed
-            if name' `elem` namesUsed
+            if name' `DS.member` namesUsed
                 then vsmAddErr (ctx, name' ++ " imported from module is already defined")
                 else let rewrittenGlobVar = GDecl (nullCtx (Var name' t)) (fmap (ctxItem . (rewriteCtxExpr renames)) mexpr)
                      in do vsmAddToNamesUsed name'
@@ -612,6 +613,10 @@ rewriteGlob' prefix0 renames vars (GI (Ctx ctx mName) bindings prefix) =
     where rewriteBinding (fv,rn) = case lookup rn renames of
                                        Nothing -> vsmAddErr (ctx, rn ++ ": not found") >> return (fv,rn)
                                        Just rn' -> return (fv,rn')
+
+removeLocals :: [CtxVar] -> [(String, String)] -> [(String, String)]
+removeLocals locals globals =
+    filter (\ (gName, _) -> (all (\ (Ctx _ (Var localName _)) -> localName /= gName)) locals) globals
 
 compileState :: Ctx State -> VState ()
 compileState state@(Ctx _ (State nm handlers)) = 
@@ -693,22 +698,22 @@ compileStatement  (Ctx ctx (Decl var@(Var name t) expr)) = do
     get'vsBranchReturns
 compileStatement  (Ctx ctx (While expr statement)) = do
     t <- compileCtxExpr expr
-    vsmInBranch $ compileStatement statement
+    compileBranchStatement statement
     get'vsBranchReturns
 compileStatement (Ctx ctx(DoWhile statement expr)) = do
     t <- compileCtxExpr expr
-    vsmInBranch $ compileStatement statement
+    compileBranchStatement statement
     get'vsBranchReturns
 compileStatement (Ctx ctx (For mexpr1 mexpr2 mexpr3 statement)) = do
     compileExpressions mexpr1
     compileExpressions mexpr3
     t <- compileMExpression mexpr2
-    vsmInBranch $ compileStatement statement
+    compileBranchStatement statement
     get'vsBranchReturns
 compileStatement (Ctx ctx (If expr thenStmt elseStmt)) = do
     t <- compileCtxExpr expr
-    ret1 <- vsmInBranch $ compileStatement thenStmt
-    ret2 <- vsmInBranch $ compileStatement elseStmt
+    ret1 <- compileBranchStatement thenStmt
+    ret2 <- compileBranchStatement elseStmt
     returns <- get'vsBranchReturns
     put'vsBranchReturns (returns || (ret1 && ret2))
     get'vsBranchReturns
@@ -743,6 +748,13 @@ compileStatement (Ctx ctx (Jump s)) = do
     labels <- get'vsLabels
     when (s `notElem` concat labels) $ vsmAddErr (ctx, "no such label to jump to: " ++ s)
     get'vsBranchReturns
+
+compileBranchStatement :: CtxStmt -> VState Bool
+compileBranchStatement ctxStmt@(Ctx _ (Decl _ _)) = do
+    vsmAddErr (srcCtx ctxStmt, "Declaration requires a new scope  - -  use { and }")
+    return False
+--    get'vsBranchReturns
+compileBranchStatement ctxStmt = vsmInBranch $ compileStatement ctxStmt
 
 
 compileStatements :: [CtxStmt] -> VState Bool
