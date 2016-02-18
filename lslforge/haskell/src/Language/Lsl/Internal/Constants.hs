@@ -154,6 +154,17 @@ validPrimHoleType = flip elem $ map IVal [cPrimHoleDefault,cPrimHoleSquare,
 llcUrlRequestGranted = SVal "URL_REQUEST_GRANTED"
 llcUrlRequestDenied = SVal "URL_REQUEST_DENIED"
 
+cJsonAppend = -1;llcJsonAppend :: RealFloat a => LSLValue a; llcJsonAppend = IVal cJsonAppend
+cJsonArray = "\xfdd2";llcJsonArray :: RealFloat a => LSLValue a; llcJsonArray = SVal cJsonArray
+cJsonDelete = "\xfdd8";llcJsonDelete :: RealFloat a => LSLValue a; llcJsonDelete = SVal cJsonDelete
+cJsonFalse = "\xfdd7";llcJsonFalse :: RealFloat a => LSLValue a; llcJsonFalse = SVal cJsonFalse
+cJsonInvalid = "\xfdd0";llcJsonInvalid :: RealFloat a => LSLValue a; llcJsonInvalid = SVal cJsonInvalid
+cJsonNull = "\xfdd5";llcJsonNull :: RealFloat a => LSLValue a; llcJsonNull = SVal cJsonNull
+cJsonNumber = "\xfdd3";llcJsonNumber :: RealFloat a => LSLValue a; llcJsonNumber = SVal cJsonNumber
+cJsonObject = "\xfdd1";llcJsonObject :: RealFloat a => LSLValue a; llcJsonObject = SVal cJsonObject
+cJsonString = "\xfdd4";llcJsonString :: RealFloat a => LSLValue a; llcJsonString = SVal cJsonString
+cJsonTrue = "\xfdd6";llcJsonTrue :: RealFloat a => LSLValue a; llcJsonTrue = SVal cJsonTrue
+
 allConstants :: RealFloat a => [Constant a]
 allConstants = [
     Constant "ACTIVE" llcActive,
@@ -347,15 +358,16 @@ allConstants = [
     Constant "INVENTORY_SCRIPT" llcInventoryScript,
     Constant "INVENTORY_SOUND" llcInventorySound,
     Constant "INVENTORY_TEXTURE" llcInventoryTexture,
-    Constant "JSON_ARRAY" (SVal "\xfdd2"),
-    Constant "JSON_DELETE" (SVal "\xfdd8"),
-    Constant "JSON_FALSE" (SVal "\xfdd7"),
-    Constant "JSON_INVALID" (SVal "\xfdd0"),
-    Constant "JSON_NULL" (SVal "\xfdd5"),
-    Constant "JSON_NUMBER" (SVal "\xfdd3"),
-    Constant "JSON_OBJECT" (SVal "\xfdd1"),
-    Constant "JSON_STRING" (SVal "\xfdd4"),
-    Constant "JSON_TRUE" (SVal "\xfdd6"),
+    Constant "JSON_APPEND" llcJsonAppend,
+    Constant "JSON_ARRAY" llcJsonArray,
+    Constant "JSON_DELETE" llcJsonDelete,
+    Constant "JSON_FALSE" llcJsonFalse,
+    Constant "JSON_INVALID" llcJsonInvalid,
+    Constant "JSON_NULL" llcJsonNull,
+    Constant "JSON_NUMBER" llcJsonNumber,
+    Constant "JSON_OBJECT" llcJsonObject,
+    Constant "JSON_STRING" llcJsonString,
+    Constant "JSON_TRUE" llcJsonTrue,
     Constant "KFM_CMD_PAUSE" (IVal 2),
     Constant "KFM_CMD_PLAY" (IVal 0),
     Constant "KFM_CMD_STOP" (IVal 1),
