@@ -13,7 +13,7 @@ import IO
 import System
 import System.Exit
 
-version="0.1.5.0"
+version="0.1.6.5"
 
 usage progName = "Usage: " ++ progName ++ " [Version|MetaData|Compiler|ExpressionHandler|SimMetaData|SystemTester|UnitTester|CompilationServer]"
 
