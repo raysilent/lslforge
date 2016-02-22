@@ -167,10 +167,10 @@ renderExpression ex = case ex of
                 r prefix (i:is) = renderString prefix . renderCtxExpr i . r "," is
             in renderChar '[' . r "" l . renderChar ']'
         (Add expr1 expr2) -> renderBinExpr "+" expr1 expr2 lo
-        (Sub expr1 expr2) -> renderBinExpr "-" expr1 expr2 lo
+        (Sub expr1 expr2) -> renderBinExprMath "-" expr1 expr2 lo
         (Mul expr1 expr2) -> renderBinExpr "*" expr1 expr2 lo
-        (Div expr1 expr2) -> renderBinExpr "/" expr1 expr2 lo
-        (Mod expr1 expr2) -> renderBinExpr "%" expr1 expr2 lo
+        (Div expr1 expr2) -> renderBinExprMath "/" expr1 expr2 lo
+        (Mod expr1 expr2) -> renderBinExprMath "%" expr1 expr2 lo
         (BAnd expr1 expr2) -> renderBinExpr "&" expr1 expr2 lo
         (Xor expr1 expr2) -> renderBinExpr "^" expr1 expr2 lo
         (BOr expr1 expr2) -> renderBinExpr "|" expr1 expr2 lo
@@ -184,13 +184,16 @@ renderExpression ex = case ex of
         (ShiftR expr1 expr2) -> renderBinExpr ">>" expr1 expr2 lo
         (Inv expr) -> renderChar '~' . renderInParenIfLower expr lo
         (Not expr) -> renderChar '!' . renderInParenIfLower expr lo
-        (Neg expr) -> renderChar '-' . renderInParenIfLower expr lo
+-- similar line for (Neg) was there before patch was applied, but is this really needed - look at renderSimple(Neg expr) above
+        (Neg expr) -> renderChar '-' . renderInParenIfLower expr lo -- doing almost the same as renderSimple?
         (Call name exprs) -> renderCtxName name . renderChar '(' . renderCtxExprs "" exprs . renderChar ')'
         (Cast t expr) -> renderChar '(' . renderType t . renderChar ')' .
                         renderInParenIfLower expr lo
         (Get var) -> renderVarAccess var
 --renderExpression (Const var) = renderVarAccess var
+-- when and why was (Const var) commented out?
 --renderExpression (Set var expr) = renderChar '(' . renderVarAccess var . renderString " = " . renderCtxExpr expr . renderChar ')'
+-- (Set var expr) with parenthesis adding and renderVarAccess was commented out in pre-patched version too
         (Set va expr) -> renderAssignment va "=" expr
         (IncBy va expr) -> renderAssignment va "+=" expr
         (DecBy va expr) -> renderAssignment va "-=" expr
@@ -206,8 +209,14 @@ renderExpression ex = case ex of
     where
         lo = \ t -> isLower ex t || needsBooleanParens ex t || castCast ex t
 
-renderInParens f = renderChar '(' . f . renderChar ')'
+-- is this renderInParens still used?
+-- renderInParens f = renderChar '(' . f . renderChar ')'
 
+-- added back old renderBinExpr handling because of math bug *rendering a = b-(c-d) to a = b-c-d*
+-- renamed to renderBinExprMath and only used on Sub, Div, Mod
+renderBinExprMath op expr1 expr2 f = renderChar '(' . renderCtxExpr expr1 . renderChar ' ' .
+									renderString op . renderChar ' ' . renderCtxExpr expr2 . renderChar ')'
+		
 renderBinExpr op expr1 expr2 f =
         renderInParenIfLower expr1 f . renderChar ' ' . renderString op . renderChar ' ' .
         renderInParenIfLower expr2 f
@@ -310,6 +319,8 @@ prec e =
             (BOr _ _) -> 10
             (And _ _) -> 11       -- usually And is higher than Or,
             (Or _ _) -> 11        -- this seems bug of LSL Compiler. see SVC-779
+									-- still LSLForge adds parenthesis around And expression, making it higher
+									-- maybe done in Syntax.hs (Ctx)
             (Get _) -> 0
             (Set _ _) -> 12
             (IncBy _ _) -> 12
