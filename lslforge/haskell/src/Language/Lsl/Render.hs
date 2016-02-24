@@ -180,8 +180,8 @@ renderExpression ex = case ex of
         (Ge expr1 expr2) -> renderBinExpr ">=" expr1 expr2 lo
         (And expr1 expr2) -> renderBinExpr "&&" expr1 expr2 lo
         (Or expr1 expr2) -> renderBinExpr "||" expr1 expr2 lo
-        (ShiftL expr1 expr2) -> renderBinExpr "<<" expr1 expr2 lo
-        (ShiftR expr1 expr2) -> renderBinExpr ">>" expr1 expr2 lo
+        (ShiftL expr1 expr2) -> renderBinExprMath "<<" expr1 expr2 lo
+        (ShiftR expr1 expr2) -> renderBinExprMath ">>" expr1 expr2 lo
         (Inv expr) -> renderChar '~' . renderInParenIfLower expr lo
         (Not expr) -> renderChar '!' . renderInParenIfLower expr lo
 -- similar line for (Neg) was there before patch was applied, but is this really needed - look at renderSimple(Neg expr) above
