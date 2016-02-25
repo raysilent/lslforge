@@ -167,10 +167,10 @@ renderExpression ex = case ex of
                 r prefix (i:is) = renderString prefix . renderCtxExpr i . r "," is
             in renderChar '[' . r "" l . renderChar ']'
         (Add expr1 expr2) -> renderBinExpr "+" expr1 expr2 lo
-        (Sub expr1 expr2) -> renderBinExprMath "-" expr1 expr2 lo
+        (Sub expr1 expr2) -> renderBinExpr "-" expr1 expr2 lo
         (Mul expr1 expr2) -> renderBinExpr "*" expr1 expr2 lo
-        (Div expr1 expr2) -> renderBinExprMath "/" expr1 expr2 lo
-        (Mod expr1 expr2) -> renderBinExprMath "%" expr1 expr2 lo
+        (Div expr1 expr2) -> renderBinExpr "/" expr1 expr2 lo
+        (Mod expr1 expr2) -> renderBinExpr "%" expr1 expr2 lo
         (BAnd expr1 expr2) -> renderBinExpr "&" expr1 expr2 lo
         (Xor expr1 expr2) -> renderBinExpr "^" expr1 expr2 lo
         (BOr expr1 expr2) -> renderBinExpr "|" expr1 expr2 lo
@@ -180,8 +180,8 @@ renderExpression ex = case ex of
         (Ge expr1 expr2) -> renderBinExpr ">=" expr1 expr2 lo
         (And expr1 expr2) -> renderBinExpr "&&" expr1 expr2 lo
         (Or expr1 expr2) -> renderBinExpr "||" expr1 expr2 lo
-        (ShiftL expr1 expr2) -> renderBinExprMath "<<" expr1 expr2 lo
-        (ShiftR expr1 expr2) -> renderBinExprMath ">>" expr1 expr2 lo
+        (ShiftL expr1 expr2) -> renderBinExpr "<<" expr1 expr2 lo
+        (ShiftR expr1 expr2) -> renderBinExpr ">>" expr1 expr2 lo
         (Inv expr) -> renderChar '~' . renderInParenIfLower expr lo
         (Not expr) -> renderChar '!' . renderInParenIfLower expr lo
 -- similar line for (Neg) was there before patch was applied, but is this really needed - look at renderSimple(Neg expr) above
@@ -207,19 +207,14 @@ renderExpression ex = case ex of
         (PreInc va) -> renderString "++" . renderVarAccess va
         (PreDec va) -> renderString "--" . renderVarAccess va
     where
-        lo = \ t -> isLower ex t || needsBooleanParens ex t || castCast ex t
+        lo = \ t -> isLower ex t || needsBooleanParens ex t || explicitAssoc ex t
 
 -- is this renderInParens still used?
 -- renderInParens f = renderChar '(' . f . renderChar ')'
 
--- added back old renderBinExpr handling because of math bug *rendering a = b-(c-d) to a = b-c-d*
--- renamed to renderBinExprMath and only used on Sub, Div, Mod
-renderBinExprMath op expr1 expr2 f = renderChar '(' . renderCtxExpr expr1 . renderChar ' ' .
-									renderString op . renderChar ' ' . renderCtxExpr expr2 . renderChar ')'
-		
 renderBinExpr op expr1 expr2 f =
-        renderInParenIfLower expr1 f . renderChar ' ' . renderString op . renderChar ' ' .
-        renderInParenIfLower expr2 f
+    renderInParenIfLower expr1 f . renderChar ' ' . renderString op . renderChar ' ' . renderInParenIfLower expr2 f
+
 renderAssignment va op expr = 
     renderVarAccess va . renderChar ' ' . renderString op . renderChar ' ' . renderCtxExpr expr
 renderComponent All = blank
@@ -265,14 +260,6 @@ needsBooleanParens ex0 (Ctx _ ex1) =
             (Or _ _) -> case ex1 of
                                 (And _ _) -> True
                                 _ -> False
-            _ -> False
-
-castCast :: Expr -> Ctx Expr -> Bool
-castCast ex0 (Ctx _ ex1) =
-        case ex0 of
-            (Cast _ _) -> case ex1 of
-                               (Cast _ _) -> True
-                               _ -> False
             _ -> False
 
 -- Comparing Order of Precedence
@@ -329,3 +316,34 @@ prec e =
             (DivBy _ _) -> 12
             (ModBy _ _) -> 12
             _ -> 0
+
+-- Checking Associativity
+
+explicitAssoc :: Expr -> Ctx Expr -> Bool
+explicitAssoc ex0 (Ctx _ ex1) = 
+    if assoc ex0 && assoc ex1 then True
+        else False
+--may give a few too much parenthesisas, as not comparing e0 and ex1 e.g. (Sub _ _) == (Sub _ _)
+--would be no need for parenthesis when e.g (Sub _ _) and (Lt _ _) except for precedence
+--but be carefull with Lt, Gt, Le, Ge
+
+-- Those operators need explicit associative setting
+
+assoc :: Expr -> Bool
+assoc e = 
+        case e of
+            (Div _ _) -> True
+            (Mod _ _) -> True
+            (Sub _ _) -> True
+            (Lt _ _) -> True
+            (Gt _ _) -> True
+            (Le _ _) -> True
+            (Ge _ _) -> True
+            (ShiftL _ _) -> True
+            (ShiftR _ _) -> True
+            (Cast _ _) -> True
+            (Equal _ _) -> True
+            (NotEqual _ _) -> True
+            _ -> False
+
+-- http://wiki.secondlife.com/wiki/Category_talk:LSL_Operators
