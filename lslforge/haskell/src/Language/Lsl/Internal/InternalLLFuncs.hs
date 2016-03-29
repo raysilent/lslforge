@@ -53,6 +53,12 @@ module Language.Lsl.Internal.InternalLLFuncs(
     llXorBase64Strings,
     llXorBase64StringsCorrect,
     llSHA1String,
+    -- JSON functions
+    llJson2List,
+    llJsonGetValue,
+    llJsonSetValue,
+    llJsonValueType,
+    llList2Json,
     -- Math functions
     llCos,
     llSin,
@@ -114,7 +120,8 @@ import Language.Lsl.Internal.Util(Permutation3(..),axisAngleToRotation,cut,dist3
                quaternionToRotations,rotationBetween,rotationsToQuaternion)
 import Language.Lsl.Internal.Type(LSLType(..),LSLValue(..),lslValString,parseFloat,parseInt,rot2RVal,toSVal,typeOfLSLValue,vVal2Vec)
 import Language.Lsl.Internal.Evaluation(EvalResult(..))
-import Language.Lsl.Internal.Constants(findConstVal)
+--import Language.Lsl.Internal.Constants(findConstVal)
+import Language.Lsl.Internal.Constants
 import Language.Lsl.Internal.Key(LSLKey(..))
 import Language.Lsl.Internal.SHA1(hashStoHex)
 import Data.List(elemIndex,find,foldl',intersperse,isPrefixOf,sort)
@@ -125,6 +132,8 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.Digest.Pure.MD5 as MD5
 import qualified Data.ByteString.UTF8 as UTF8
 import Network.URI(escapeURIChar,unEscapeString)
+import Codec.Binary.UTF8.String(encodeString,decodeString)
+import qualified Text.JSON as J
 
 internalLLFuncNames :: [String]
 internalLLFuncNames = map fst (internalLLFuncs :: (Read a, RealFloat a) => [(String, a -> [LSLValue a] -> Maybe (EvalResult,LSLValue a))])
@@ -155,6 +164,11 @@ internalLLFuncs = [
     ("llGetSubString",llGetSubString),
     ("llInsertString",llInsertString),
     ("llIntegerToBase64",llIntegerToBase64),
+    ("llJson2List",llJson2List),
+    ("llJsonGetValue",llJsonGetValue),
+    ("llJsonSetValue",llJsonSetValue),
+    ("llJsonValueType",llJsonValueType),
+    ("llList2Json",llList2Json),
     ("llList2CSV",llList2CSV),
     ("llList2Float",llList2Float),
     ("llList2Integer",llList2Integer),
@@ -264,15 +278,90 @@ escapeURL (c:cs) n =
 maxResult = 254::Int
       
 llEscapeURL _ [SVal string] =
-    continueWith $ SVal $ escapeURL string maxResult
+    continueWith $ SVal $ escapeURL (encodeString string) maxResult
     
 llUnescapeURL _ [SVal string] = 
-    continueWith $ SVal $ take maxResult $ unEscapeString string
+    continueWith $ SVal $ decodeString $ take maxResult $ unEscapeString string
  
 llMD5String _ [SVal string, IVal nonce] =
     continueWith $ SVal $ (show . MD5.md5 . L.pack . B.unpack . UTF8.fromString) (string ++ ":" ++ show nonce)   
 
 llSHA1String _ [SVal string] = continueWith $ SVal (hashStoHex string)
+
+-- JSON functions
+
+llJson2List _ [SVal jsonstring] = continueWith $ LVal $
+    case J.decode jsonstring of
+        (J.Ok (J.JSArray a)) -> map js2lsl a
+        (J.Ok (J.JSObject o)) -> concat $ map (\(k, v) -> [SVal k, js2lsl v]) $ J.fromJSObject o
+        (J.Ok j) -> [SVal $ J.encode j]
+        (J.Error _) -> [SVal jsonstring]
+
+llJsonGetValue _ [SVal jsonstring, LVal sp] = continueWith $ SVal $
+    case mapM convSpecifier sp of
+        (Just sp') -> case J.decodeStrict jsonstring >>= lookupDeep' sp' of
+                           (J.Ok j) -> lslValToString $ js2lsl j
+                           otherwise -> cJsonInvalid
+        otherwise -> cJsonInvalid
+
+llJsonSetValue _ [SVal jsonstring, LVal sp, SVal val] = continueWith $ SVal $
+    case mapM convSpecifier sp of
+        (Just sp') -> case J.decodeStrict jsonstring >>=
+                                  updateFieldDeep' sp' (decodeFromLsl val) of
+                           (J.Ok js) -> J.encode js
+                           (J.Error _) -> cJsonInvalid
+        otherwise -> cJsonInvalid
+
+llJsonValueType _ [SVal jsonstring, LVal sp] = continueWith $ SVal $
+    case mapM convSpecifier sp of
+        (Just sp') -> case J.decodeStrict jsonstring >>= lookupDeep' sp' of
+                          (J.Ok v) -> jsonType v
+                          otherwise -> cJsonInvalid
+        otherwise -> cJsonInvalid
+   where
+         jsonType :: J.JSValue -> String
+         jsonType J.JSNull           = cJsonNull
+         jsonType (J.JSBool b)       = if b then cJsonTrue else cJsonFalse
+         jsonType (J.JSRational _ _) = cJsonNumber
+         jsonType (J.JSString _)     = cJsonString
+         jsonType (J.JSArray _)      = cJsonArray
+         jsonType (J.JSObject _)     = cJsonObject
+
+llList2Json _ [SVal typ, LVal list] = continueWith $ SVal $
+    if typ == cJsonArray then J.encodeStrict $ J.JSArray $ map lsl2js list
+       else if typ == cJsonObject then case l2al list of
+                                             (Just al) -> J.encode (J.toJSObject al)
+                                             _ -> cJsonInvalid
+          else cJsonInvalid
+    where
+        lsl2js :: RealFloat a => LSLValue a -> J.JSValue
+        lsl2js (IVal i) = J.JSRational False $ toRational i
+        lsl2js (FVal f) = J.JSRational True $ toRational f
+        lsl2js s = decodeFromLsl $ lslValToString s
+        l2al :: RealFloat a => [LSLValue a] -> Maybe [(String, J.JSValue)]
+        l2al [] = Just []
+        l2al ((SVal k):v:xs) = l2al xs >>= \ al -> return $ (k, lsl2js v):al
+        l2al _ = Nothing
+
+convSpecifier :: RealFloat a => LSLValue a -> Maybe Specifier
+convSpecifier (IVal i) | i == cJsonAppend = Just Append
+                       | otherwise = Just $ Index i
+convSpecifier (SVal k) = Just $ Key k
+convSpecifier _ = Nothing
+
+js2lsl :: RealFloat a => J.JSValue -> LSLValue a
+js2lsl (J.JSBool b) = if b then llcJsonTrue else llcJsonFalse
+js2lsl (J.JSRational True r) = FVal $ fromRational r
+js2lsl (J.JSRational False r) = IVal $ floor r
+js2lsl jsval = SVal $ J.encode jsval
+
+decodeFromLsl :: String -> J.JSValue
+decodeFromLsl val | val == cJsonTrue = J.JSBool True
+                  | val == cJsonFalse = J.JSBool False
+                  | otherwise = case J.decode val of
+                                     (J.Ok js) -> js
+                                     _ -> J.JSString $ J.toJSString val
+
 -- Math functions
 
 unaryToLL :: (RealFloat a, Monad m) => (a -> a) -> [LSLValue a] -> m (EvalResult,LSLValue a)
@@ -661,3 +750,114 @@ encode1 c1 =
     let b1 = ((fromEnum c1) `shiftR` 2) .&. 63
         b2 = ((fromEnum c1) `shiftL` 4) .&. 63
     in [base64chars !! b1,base64chars !! b2,'=','=']
+
+--
+-- TODO: these functions should be in separated module, like Text.JSON.Specifier
+--
+
+data Specifier = Index Int | Append | Key String
+
+-- this function shoud be called lookup in separated module
+jsonLookup :: Specifier -> J.JSValue -> Maybe J.JSValue
+jsonLookup sp json = case lookup' sp json of
+                      (J.Ok j) -> Just j
+                      (J.Error _) -> Nothing
+
+findWithDefault :: J.JSValue -> Specifier -> J.JSValue -> J.JSValue
+findWithDefault d sp json = case lookup' sp json of
+                                 (J.Ok j) -> j
+                                 (J.Error _) -> d
+
+lookupDeep :: [Specifier] -> J.JSValue -> Maybe J.JSValue
+lookupDeep sp json = case lookupDeep' sp json of
+                          (J.Ok j) -> Just j
+                          (J.Error _) -> Nothing
+
+findDeepWithDefault :: J.JSValue -> [Specifier] -> J.JSValue -> J.JSValue
+findDeepWithDefault d sp json = case lookupDeep' sp json of
+                                     (J.Ok j) -> j
+                                     (J.Error _) -> d
+
+updateField :: Specifier -> J.JSValue -> J.JSValue -> Maybe J.JSValue
+updateField sp v json = case updateField' sp v json of
+                             (J.Ok j) -> Just j
+                             (J.Error _) -> Nothing
+
+updateFieldDeep :: [Specifier] -> J.JSValue -> J.JSValue -> Maybe J.JSValue
+updateFieldDeep sps v json = case updateFieldDeep' sps v json of
+                             (J.Ok j) -> Just j
+                             (J.Error _) -> Nothing
+
+delete :: Specifier -> J.JSValue -> Maybe J.JSValue
+delete sp json = case delete' sp json of
+                     (J.Ok j) -> Just j
+                     otherwise -> Nothing
+
+deleteDeep :: [Specifier] -> J.JSValue -> Maybe J.JSValue
+deleteDeep sp json = case deleteDeep' sp json of
+                     (J.Ok j) -> Just j
+                     otherwise -> Nothing
+
+lookup' :: Specifier -> J.JSValue -> J.Result J.JSValue
+lookup' (Index i) (J.JSArray list) | i >= 0 && i < length list = return $ list !! i
+lookup' (Key k) (J.JSObject obj) = case lookup k $ J.fromJSObject obj of
+                                        (Just j) -> return j
+                                        otherwise -> J.Error "Invalid specifier"
+lookup' _ _ = J.Error "Invalid specifier"
+
+lookupDeep' :: [Specifier] -> J.JSValue -> J.Result J.JSValue
+lookupDeep' [] json = return json
+lookupDeep' (sp:sps) json = lookup' sp json >>= lookupDeep' sps
+
+updateField' :: Specifier -> J.JSValue -> J.JSValue -> J.Result J.JSValue
+updateField' sp v js =
+    case js of
+        (J.JSArray l) -> case sp of
+                              Append -> return $ J.JSArray $ l ++ [v]
+                              (Index i) -> repl l i v
+                              otherwise -> J.Error "Invalid specifier"
+        (J.JSObject o) -> case sp of
+                 (Key k) -> return $ J.JSObject $ J.toJSObject $ addToAL (J.fromJSObject o) k v
+                 otherwise -> J.Error "Invalid parameter"
+        otherwise -> J.Error "Invalid specifier"
+
+repl :: [J.JSValue] -> Int -> J.JSValue -> J.Result J.JSValue
+repl [] _ _ = J.Error "Invalid specifier"
+repl _ i _ | i < 0 = J.Error "Invalid specifier"
+repl (x:xs) 0 v = return $ J.JSArray (v:xs)
+repl (x:xs) n v = repl xs (n - 1) v >>= \(J.JSArray t) -> return $ J.JSArray (x:t)
+
+updateFieldDeep' :: [Specifier] -> J.JSValue -> J.JSValue -> J.Result J.JSValue
+updateFieldDeep' [] v json = return v
+updateFieldDeep' (Append:sps) v j@(J.JSArray _) =
+    updateFieldDeep' sps v (J.JSArray []) >>= \t -> updateField' Append t j
+updateFieldDeep' (sp:sps) v json =
+    updateFieldDeep' sps v (findWithDefault def sp json) >>= \ t -> updateField' sp t json
+    where def = case sps of
+                     [] -> J.JSNull
+                     Append:_ -> J.JSArray []
+                     (Index _):_ -> J.JSArray []
+                     (Key _):_ -> J.JSObject $ J.toJSObject []
+
+delete' :: Specifier -> J.JSValue -> J.Result J.JSValue
+delete' (Index i) (J.JSArray list) | i >= 0 && i < length list =
+    return $ J.JSArray $ a ++ b where (a, (_:b)) = splitAt i list
+delete' (Key k) (J.JSObject obj) =
+    return $ J.JSObject $ J.toJSObject $ delFromAL (J.fromJSObject obj) k
+delete' _ _ = J.Error "Invalid specifier"
+
+deleteDeep' :: [Specifier] -> J.JSValue -> J.Result J.JSValue
+deleteDeep' [] _ = J.Error "Invalid specifier"
+deleteDeep' [sp] json = delete' sp json
+deleteDeep' (sp:sps) json =
+    lookup' sp json >>= deleteDeep' sps >>= \ t -> updateField' sp t json
+
+addToAL :: Eq k => [(k, v)] -> k -> v -> [(k, v)]
+addToAL [] k v = [(k, v)]
+addToAL (t@(x, _):xs) k v | x == k = (k, v):xs
+                        | otherwise = t:(addToAL xs k v)
+
+delFromAL :: Eq k => [(k, v)] -> k -> [(k, v)]
+delFromAL [] k = []
+delFromAL (t@(x, _):xs) k | x == k = xs
+                        | otherwise = t:(delFromAL xs k)

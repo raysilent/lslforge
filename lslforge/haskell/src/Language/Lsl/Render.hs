@@ -10,7 +10,7 @@ tr s x = trace (s ++ show x) x
 -- and a compiled (i.e. validated, with referenced modules included) LSL script.
 renderCompiledScript :: String -> CompiledLSLScript -> String
 renderCompiledScript stamp (CompiledLSLScript comment globals funcs states) =
-   (renderString "// LSL script generated: " . renderString stamp . renderString "\n" .
+   (renderString "// LSL script generated - LSLForge (0.1.6.5): " . renderString stamp . renderString "\n" .
     renderString comment .
     renderGlobals globals . renderFuncs funcs . renderStates states . renderString "\n") ""
 
@@ -142,72 +142,81 @@ renderCtxExpr (Ctx _ e) = renderExpression e
 renderCtxExprs prefix [] = blank
 renderCtxExprs prefix (e:es) = renderString prefix . renderCtxExpr e . renderCtxExprs "," es
 
-renderExpression (IntLit i) = shows i
-renderExpression (FloatLit f) = shows f
-renderExpression (StringLit s) = renderString ('"':go s)
-     where go [] = "\""
-           go ('\\':s) = '\\':'\\':go s
-           go ('\t':s) = '\\':'t':go s
-           go ('\n':s) = '\\':'n':go s
-           go ('"':s) = '\\':'"':go s
-           go (c:s) = c:go s
-renderExpression (KeyLit k) = shows k
-renderExpression (VecExpr x y z) = 
-    renderChar '<' . renderCtxExpr x . renderChar ',' .
-                     renderCtxExpr y . renderChar ',' .
-                     renderCtxExpr z . renderChar '>'
-renderExpression (RotExpr x y z s) = 
-    renderChar '<' . renderCtxExpr x . renderChar ',' .
-                     renderCtxExpr y . renderChar ',' .
-                     renderCtxExpr z . renderChar ',' .
-                     renderCtxExpr s . renderChar '>'
-renderExpression (ListExpr l) = 
-    let r prefix [] = blank
-        r prefix (i:is) = renderString prefix . renderCtxExpr i . r "," is
-    in renderChar '[' . r "" l . renderChar ']'
-renderExpression (Add expr1 expr2) = renderBinExpr "+" expr1 expr2
-renderExpression (Sub expr1 expr2) = renderBinExpr "-" expr1 expr2
-renderExpression (Mul expr1 expr2) = renderBinExpr "*" expr1 expr2
-renderExpression (Div expr1 expr2) = renderBinExpr "/" expr1 expr2
-renderExpression (Mod expr1 expr2) = renderBinExpr "%" expr1 expr2
-renderExpression (BAnd expr1 expr2) = renderBinExpr "&" expr1 expr2
-renderExpression (Xor expr1 expr2) = renderBinExpr "^" expr1 expr2
-renderExpression (BOr expr1 expr2) = renderBinExpr "|" expr1 expr2
-renderExpression (Lt expr1 expr2) = renderBinExpr "<" expr1 expr2
-renderExpression (Gt expr1 expr2) = renderBinExpr ">" expr1 expr2
-renderExpression (Le expr1 expr2) = renderBinExpr "<=" expr1 expr2
-renderExpression (Ge expr1 expr2) = renderBinExpr ">=" expr1 expr2
-renderExpression (And expr1 expr2) = renderBinExpr "&&" expr1 expr2
-renderExpression (Or expr1 expr2) = renderBinExpr "||" expr1 expr2
-renderExpression (ShiftL expr1 expr2) = renderBinExpr "<<" expr1 expr2
-renderExpression (ShiftR expr1 expr2) = renderBinExpr ">>" expr1 expr2
-renderExpression (Inv expr) = renderChar '(' . renderChar '~' . renderCtxExpr expr . renderChar ')'
-renderExpression (Not expr) = renderChar '(' . renderChar '!' . renderCtxExpr expr . renderChar ')'
-renderExpression (Neg expr) = renderChar '(' . renderChar '-' . renderCtxExpr expr . renderChar ')'
-renderExpression (Call name exprs) = renderCtxName name . renderChar '(' . renderCtxExprs "" exprs . renderChar ')'
-renderExpression (Cast t expr) = renderString "((" . renderType t . renderChar ')' . renderCtxExpr expr . renderChar ')'
-renderExpression (Get var) = renderVarAccess var
+renderExpression ex = case ex of
+        (IntLit i) -> shows i
+        (FloatLit f) -> shows f
+        (StringLit s) -> renderString ('"':go s)
+             where go [] = "\""
+                   go ('\\':s) = '\\':'\\':go s
+                   go ('\t':s) = '\\':'t':go s
+                   go ('\n':s) = '\\':'n':go s
+                   go ('"':s) = '\\':'"':go s
+                   go (c:s) = c:go s
+        (KeyLit k) -> shows k
+        (VecExpr x y z) -> 
+            renderChar '<' . renderCtxExpr x . renderChar ',' .
+                             renderCtxExpr y . renderChar ',' .
+                             renderCtxExpr z . renderChar '>'
+        (RotExpr x y z s) ->
+            renderChar '<' . renderCtxExpr x . renderChar ',' .
+                             renderCtxExpr y . renderChar ',' .
+                             renderCtxExpr z . renderChar ',' .
+                             renderCtxExpr s . renderChar '>'
+        (ListExpr l) ->
+            let r prefix [] = blank
+                r prefix (i:is) = renderString prefix . renderCtxExpr i . r "," is
+            in renderChar '[' . r "" l . renderChar ']'
+        (Add expr1 expr2) -> renderBinExpr "+" expr1 expr2 lo
+        (Sub expr1 expr2) -> renderBinExpr "-" expr1 expr2 lo
+        (Mul expr1 expr2) -> renderBinExpr "*" expr1 expr2 lo
+        (Div expr1 expr2) -> renderBinExpr "/" expr1 expr2 lo
+        (Mod expr1 expr2) -> renderBinExpr "%" expr1 expr2 lo
+        (BAnd expr1 expr2) -> renderBinExpr "&" expr1 expr2 lo
+        (Xor expr1 expr2) -> renderBinExpr "^" expr1 expr2 lo
+        (BOr expr1 expr2) -> renderBinExpr "|" expr1 expr2 lo
+        (Lt expr1 expr2) -> renderBinExpr "<" expr1 expr2 lo
+        (Gt expr1 expr2) -> renderBinExpr ">" expr1 expr2 lo
+        (Le expr1 expr2) -> renderBinExpr "<=" expr1 expr2 lo
+        (Ge expr1 expr2) -> renderBinExpr ">=" expr1 expr2 lo
+        (And expr1 expr2) -> renderBinExpr "&&" expr1 expr2 lo
+        (Or expr1 expr2) -> renderBinExpr "||" expr1 expr2 lo
+        (ShiftL expr1 expr2) -> renderBinExpr "<<" expr1 expr2 lo
+        (ShiftR expr1 expr2) -> renderBinExpr ">>" expr1 expr2 lo
+        (Inv expr) -> renderChar '~' . renderInParenIfLower expr lo
+        (Not expr) -> renderChar '!' . renderInParenIfLower expr lo
+-- similar line for (Neg) was there before patch was applied, but is this really needed - look at renderSimple(Neg expr) above
+        (Neg expr) -> renderChar '-' . renderInParenIfLower expr lo -- doing almost the same as renderSimple?
+        (Call name exprs) -> renderCtxName name . renderChar '(' . renderCtxExprs "" exprs . renderChar ')'
+        (Cast t expr) -> renderChar '(' . renderType t . renderChar ')' .
+                        renderInParenIfLower expr lo
+        (Get var) -> renderVarAccess var
 --renderExpression (Const var) = renderVarAccess var
+-- when and why was (Const var) commented out?
 --renderExpression (Set var expr) = renderChar '(' . renderVarAccess var . renderString " = " . renderCtxExpr expr . renderChar ')'
-renderExpression (Set va expr) = renderAssignment va "=" expr
-renderExpression (IncBy va expr) = renderAssignment va "+=" expr
-renderExpression (DecBy va expr) = renderAssignment va "-=" expr
-renderExpression (MulBy va expr) = renderAssignment va "*=" expr
-renderExpression (DivBy va expr) = renderAssignment va "/=" expr
-renderExpression (ModBy va expr) = renderAssignment va "%=" expr
-renderExpression (Equal expr1 expr2) = renderBinExpr "==" expr1 expr2
-renderExpression (NotEqual expr1 expr2) = renderBinExpr "!=" expr1 expr2
-renderExpression (PostInc va) = renderInParens (renderVarAccess va . renderString "++")
-renderExpression (PostDec va) = renderInParens (renderVarAccess va . renderString "--")
-renderExpression (PreInc va) = renderInParens (renderString "++" . renderVarAccess va)
-renderExpression (PreDec va) = renderInParens (renderString "--" . renderVarAccess va)
+-- (Set var expr) with parenthesis adding and renderVarAccess was commented out in pre-patched version too
+        (Set va expr) -> renderAssignment va "=" expr
+        (IncBy va expr) -> renderAssignment va "+=" expr
+        (DecBy va expr) -> renderAssignment va "-=" expr
+        (MulBy va expr) -> renderAssignment va "*=" expr
+        (DivBy va expr) -> renderAssignment va "/=" expr
+        (ModBy va expr) -> renderAssignment va "%=" expr
+        (Equal expr1 expr2) -> renderBinExpr "==" expr1 expr2 lo
+        (NotEqual expr1 expr2) -> renderBinExpr "!=" expr1 expr2 lo
+        (PostInc va) -> renderVarAccess va . renderString "++"
+        (PostDec va) -> renderVarAccess va . renderString "--"
+        (PreInc va) -> renderString "++" . renderVarAccess va
+        (PreDec va) -> renderString "--" . renderVarAccess va
+    where
+        lo = \ t -> isLower ex t || needsBooleanParens ex t || explicitAssoc ex t
 
-renderInParens f = renderChar '(' . f . renderChar ')'
+-- is this renderInParens still used?
+-- renderInParens f = renderChar '(' . f . renderChar ')'
 
-renderBinExpr op expr1 expr2 = renderChar '(' . renderCtxExpr expr1 . renderChar ' ' .
-                               renderString op . renderChar ' ' . renderCtxExpr expr2 . renderChar ')'
+renderBinExpr op expr1 expr2 f =
+    renderInParenIfLower expr1 f . renderChar ' ' . renderString op . renderChar ' ' . renderInParenIfLower expr2 f
+
 renderAssignment va op expr = 
-    renderChar '(' . renderVarAccess va . renderChar ' ' . renderString op . renderChar ' ' . renderCtxExpr expr . renderChar ')'
+    renderVarAccess va . renderChar ' ' . renderString op . renderChar ' ' . renderCtxExpr expr
 renderComponent All = blank
 renderComponent X = renderString ".x"
 renderComponent Y = renderString ".y"
@@ -234,3 +243,104 @@ renderPreText = maybe (renderString "\n") (renderString . srcPreText)
 
 renderPreText1 :: (String -> String) -> (Maybe SourceContext) -> String -> String
 renderPreText1 f = maybe (renderString "\n" . f) (renderString . srcPreText)
+
+-- Wrap with parentheses if lower precedence
+
+renderInParenIfLower :: (Ctx Expr) -> ((Ctx Expr) -> Bool) -> String -> String
+renderInParenIfLower ce f =
+        if f ce then renderChar '(' . renderCtxExpr ce . renderChar ')'
+                else renderCtxExpr ce
+
+needsBooleanParens :: Expr -> Ctx Expr -> Bool
+needsBooleanParens ex0 (Ctx _ ex1) =
+        case ex0 of
+            (And _ _) -> case ex1 of
+                                (Or _ _) -> True
+                                _ -> False
+            (Or _ _) -> case ex1 of
+                                (And _ _) -> True
+                                _ -> False
+            _ -> False
+
+-- Comparing Order of Precedence
+
+isLower :: Expr -> (Ctx Expr) -> Bool
+isLower e0 (Ctx _ e1) = prec e0 < prec e1
+
+-- Smaller number is higher precedence
+
+prec :: Expr -> Int
+prec e = 
+        case e of
+            (IntLit _) -> 0
+            (FloatLit _) -> 0
+            (StringLit _) -> 0
+            (ListExpr _) -> 0
+            (VecExpr _ _ _) -> 0
+            (RotExpr _ _ _ _) -> 0
+            (KeyLit _) -> 0
+            (Call _ _) -> 0
+            (Cast _ _) -> 1
+            (Not _) -> 2
+            (Inv _) -> 2
+            (Neg _) -> 2
+            (PostInc _) -> 2
+            (PostDec _) -> 2
+            (PreInc _) -> 2
+            (PreDec _) -> 2
+            (Mul _ _) -> 3
+            (Div _ _) -> 3
+            (Mod _ _) -> 3
+            (Add _ _) -> 4
+            (Sub _ _) -> 4
+            (ShiftL _ _) -> 5
+            (ShiftR _ _) -> 5
+            (Lt _ _) -> 6
+            (Le _ _) -> 6
+            (Gt _ _) -> 6
+            (Ge _ _) -> 6
+            (Equal _ _) -> 7
+            (NotEqual _ _) -> 7
+            (BAnd _ _) -> 8
+            (Xor _ _) -> 9
+            (BOr _ _) -> 10
+            (And _ _) -> 11       -- usually And is higher than Or,
+            (Or _ _) -> 11        -- this seems bug of LSL Compiler. see SVC-779
+									-- still LSLForge adds parenthesis around And expression, making it higher
+									-- maybe done in Syntax.hs (Ctx)
+            (Get _) -> 0
+            (Set _ _) -> 12
+            (IncBy _ _) -> 12
+            (DecBy _ _) -> 12
+            (MulBy _ _) -> 12
+            (DivBy _ _) -> 12
+            (ModBy _ _) -> 12
+            _ -> 0
+
+-- Checking Associativity
+
+explicitAssoc :: Expr -> Ctx Expr -> Bool
+explicitAssoc ex0 (Ctx _ ex1) = 
+    if assoc ex0 && assoc ex1 && (prec ex0 == prec ex1) then True
+        else False
+
+-- Those operators need explicit associative setting
+
+assoc :: Expr -> Bool
+assoc e = 
+        case e of
+            (Div _ _) -> True
+            (Mod _ _) -> True
+            (Sub _ _) -> True
+            (Lt _ _) -> True
+            (Gt _ _) -> True
+            (Le _ _) -> True
+            (Ge _ _) -> True
+            (ShiftL _ _) -> True
+            (ShiftR _ _) -> True
+            (Cast _ _) -> True
+            (Equal _ _) -> True
+            (NotEqual _ _) -> True
+            _ -> False
+
+-- http://wiki.secondlife.com/wiki/Category_talk:LSL_Operators
