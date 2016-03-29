@@ -321,11 +321,8 @@ prec e =
 
 explicitAssoc :: Expr -> Ctx Expr -> Bool
 explicitAssoc ex0 (Ctx _ ex1) = 
-    if assoc ex0 && assoc ex1 then True
+    if assoc ex0 && assoc ex1 && (prec ex0 == prec ex1) then True
         else False
---may give a few too much parenthesisas, as not comparing e0 and ex1 e.g. (Sub _ _) == (Sub _ _)
---would be no need for parenthesis when e.g (Sub _ _) and (Lt _ _) except for precedence
---but be carefull with Lt, Gt, Le, Ge
 
 -- Those operators need explicit associative setting
 
