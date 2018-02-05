@@ -353,6 +353,8 @@ saveReps pkg codeInfo = do
             "public class InitAll {\n" ++
             "    public static void initAll(XStream xstream) {\n" ++
                 concatMap (\ (nm,_) -> "        " ++ nm ++ ".init(xstream);\n") codeInfo ++
+            "        Tuple2.init(xstream);\n" ++ -- FIXME: Tuple2 somehow should appear differently
+            "        Tuple3.init(xstream);\n" ++ -- FIXME: Tuple3 somehow should appear differently
             "    }\n" ++
             "}\n"
 

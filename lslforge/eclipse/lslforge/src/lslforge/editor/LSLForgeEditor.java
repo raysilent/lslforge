@@ -327,6 +327,7 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
                 am.removeAnnotation(ann);
         }
         
+        if (errs != null) {
         for (ErrInfo err : errs) {
             ErrInfo_ErrInfo e = (ErrInfo_ErrInfo) err;
             if (e.el1 instanceof Maybe_Just) {
@@ -342,6 +343,7 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
                         "org.eclipse.ui.workbench.texteditor.error", true, e.el2); //$NON-NLS-1$
                 am.addAnnotation(ann, pos);
             }
+        }
         }
     }
     

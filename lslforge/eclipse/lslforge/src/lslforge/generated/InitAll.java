@@ -134,5 +134,7 @@ public class InitAll {
         TextLocation_TextLocation.init(xstream);
         Var.init(xstream);
         Var_Var.init(xstream);
+        Tuple2.init(xstream);
+        Tuple3.init(xstream);
     }
 }
