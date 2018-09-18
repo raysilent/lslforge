@@ -12,6 +12,7 @@ This fork is to maintain LSL definitions for functions and constants, as well as
 
 ### News (newest first)
 
+* **0.1.9.7**
 * 2018-09-16 LSLForge **0.1.9.6** (**Windows**, **Linux** (Thanks [@Trapez](https://github.com/Trapez)), **Mac** (Thanks [@PellSmit](https://github.com/PellSmit)))
     * Animesh Functions and Constants:
         * llStartObjectAnimation(string anim);
