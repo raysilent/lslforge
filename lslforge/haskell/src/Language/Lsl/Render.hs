@@ -4,16 +4,18 @@ import Data.List(foldl',intersperse)
 import Language.Lsl.Syntax(Expr(..),Func(..),FuncDec(..),Global(..),Handler(..),State(..),Statement(..),
                   Ctx(..),Var(..),LSLType(..),Component(..),ctxItems,CompiledLSLScript(..),
                   SourceContext(..))
-import Debug.Trace
-tr s x = trace (s ++ show x) x
+import Language.Lsl.Internal.VersionString(versionString)
+--import Debug.Trace
+--tr s x = trace (s ++ show x) x
 -- | Generate a string representing an LSL script from a timestamp (string)
 -- and a compiled (i.e. validated, with referenced modules included) LSL script.
 renderCompiledScript :: String -> CompiledLSLScript -> String
 renderCompiledScript stamp (CompiledLSLScript comment globals funcs states) =
-   (renderString "// " . renderString stamp . renderString " - LSLForge (0.1.9.6) generated\n" .
-    renderString comment .
-    renderGlobals globals . renderFuncs funcs . renderStates states . renderString "\n" . 
-    renderString "// " . renderString stamp . renderString " - LSLForge (0.1.9.6) generated\n") ""
+   (signature . renderString comment .
+    renderGlobals globals . renderFuncs funcs . renderStates states . renderString "\n" . signature) ""
+  where
+    signature = renderString "// " . renderString stamp .
+                renderString (" - LSLForge (" ++ versionString ++ ") generated\n")
 
 renderSequence r = (foldl' (.) blank) . (map r)
 

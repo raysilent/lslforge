@@ -7,13 +7,12 @@ import qualified Language.Lsl.Internal.SimMetaData as SimMetaData
 import qualified Language.Lsl.Internal.SystemTester as SystemTester
 import qualified Language.Lsl.Internal.UnitTester as UnitTester
 import qualified Language.Lsl.Internal.CompilationServer as CompilationServer
+import Language.Lsl.Internal.VersionString(versionString)
 
 import Control.Monad
 import System.Environment
 import System.Exit
 import System.IO
-
-version="0.1.9.6"
 
 usage progName = "Usage: " ++ progName ++ " [Version|MetaData|Compiler|ExpressionHandler|SimMetaData|SystemTester|UnitTester|CompilationServer]"
 
@@ -25,7 +24,7 @@ main = do
         hPutStrLn stderr (usage progName)
         exitFailure
     case head args of
-        "Version" -> putStrLn version
+        "Version" -> putStrLn versionString
         "MetaData" -> MetaData.printMeta
         "Compiler" -> Compiler.main0
         "ExpressionHandler" -> ExpressionHandler.validateExpression stdin stdout
