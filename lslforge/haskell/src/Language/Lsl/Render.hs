@@ -11,11 +11,11 @@ import Language.Lsl.Internal.VersionString(versionString)
 -- and a compiled (i.e. validated, with referenced modules included) LSL script.
 renderCompiledScript :: String -> CompiledLSLScript -> String
 renderCompiledScript stamp (CompiledLSLScript comment globals funcs states) =
-   (signature . renderString comment .
+   (signature . renderString "\n" . renderString comment .
     renderGlobals globals . renderFuncs funcs . renderStates states . renderString "\n" . signature) ""
   where
     signature = renderString "// " . renderString stamp .
-                renderString (" - LSLForge (" ++ versionString ++ ") generated\n")
+                renderString (" - LSLForge (" ++ versionString ++ ") generated")
 
 renderSequence r = (foldl' (.) blank) . (map r)
 
