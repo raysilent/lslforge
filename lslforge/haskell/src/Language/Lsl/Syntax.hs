@@ -52,7 +52,9 @@ module Language.Lsl.Syntax (
     emptyValidationState,
     rewriteCtxExpr,
     rmCtx,
-    lslQ) where
+    lslQ,
+    giNamesFromScript,
+    giNamesFromModule) where
 
 import Language.Lsl.Internal.Type(Component(..),LSLType(..),lslTypeString)
 import Language.Lsl.Internal.Constants(isConstant,findConstType)
@@ -64,7 +66,7 @@ import Data.Generics
 import Data.Data(Data,Typeable)
 import Data.List(find,sort,sortBy,nub,nubBy,deleteFirstsBy)
 import qualified Data.Map as M
-import Data.Maybe(isJust,isNothing)
+import Data.Maybe(isJust,isNothing,mapMaybe)
 import Language.Lsl.Internal.Util(LSLInteger,ctx,findM,lookupM,filtMap)
 import Control.Monad(when,MonadPlus(..))
 import Control.Monad.Except(MonadError(..))
@@ -129,6 +131,9 @@ data Func = Func FuncDec [CtxStmt] deriving (Show,Typeable,Data)
 -- both global variables and functions, but not states or handlers.
 data LModule = LModule [GlobDef] [CtxVar]
     deriving (Show,Typeable,Data)
+
+giNamesFromModule :: LModule -> [String]
+giNamesFromModule (LModule ds _) = mapMaybe giNameFromGDef ds
 
 type CtxExpr = Ctx Expr
 -- | An LSL expression.
@@ -205,6 +210,11 @@ data Global = GDecl (Ctx Var) (Maybe Expr)
 -- | A global definition (a function, a variable, or a module import statement).
 data GlobDef = GV CtxVar (Maybe CtxExpr) | GF (Ctx Func) | GI CtxName [(String,String)] String
     deriving (Show,Typeable,Data)
+
+giNameFromGDef :: GlobDef -> Maybe String
+giNameFromGDef (GI cn _ _) = Just $ ctxItem cn
+giNameFromGDef _ = Nothing
+
 -- | An LSL event handler definition.
 data Handler = Handler { handlerName :: CtxName, handlerParams :: [CtxVar], handlerStatements :: [CtxStmt] }
     deriving (Show,Typeable,Data)
@@ -219,6 +229,9 @@ data State = State CtxName [Ctx Handler]
 
 -- | An LSL script.
 data LSLScript = LSLScript String [GlobDef] [Ctx State] deriving (Show,Typeable,Data)
+
+giNamesFromScript :: LSLScript -> [String]
+giNamesFromScript (LSLScript _ ds _) = mapMaybe giNameFromGDef ds
 
 type ModuleInfo = ([Global],[Ctx Func])
 -- | A collection of modules.

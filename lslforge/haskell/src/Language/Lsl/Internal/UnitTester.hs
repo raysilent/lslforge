@@ -28,7 +28,7 @@ main2 =
                 (augLib,scripts) <- compile src
                 let runStep state s =
                         let command = execCommandFromXML' s
-                            (e,state') = simStep scripts (libFromAugLib augLib) state command
+                            (e,state') = simStep (map (\(a,(b,_)) -> (a,b)) scripts) (libFromAugLib augLib) state command
                         in (state',testEventToXML e)
                 processLinesS (unitTests,Nothing) "quit" runStep
 

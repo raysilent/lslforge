@@ -10,10 +10,16 @@ module Language.Lsl.Internal.Compiler(
     formatCompilationSummary,
     renderScriptsToFiles) where
 
-import Control.Monad(when)
+import Control.Applicative((<|>))
+import Control.Exception(catch)
+import Control.Monad(when,guard)
+import Control.Monad.Loops(anyM)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.UTF8 as UTF8
+import Data.Maybe(Maybe(..),catMaybes,mapMaybe)
 import Data.Time(defaultTimeLocale,formatTime,getZonedTime)
+import Data.Time.Calendar(Day(..))
+import Data.Time.Clock(UTCTime(..),secondsToDiffTime)
 import Language.Lsl.Internal.DOMProcessing(tag,xmlAccept)
 import Language.Lsl.Internal.DOMSourceDescriptor(sources)
 import Language.Lsl.Internal.Load(loadModules,loadScripts)
@@ -23,8 +29,9 @@ import Language.Lsl.Syntax(AugmentedLibrary(..),CompiledLSLScript(..),Ctx(..),
     State(..),Validity,Var(..),TextLocation(..),funcName,funcParms,funcType,
     libFromAugLib,CodeErrs(..))
 import Language.Lsl.Internal.Type(lslTypeString)
-import System.Directory(doesFileExist,removeFile)
-import System.FilePath(replaceExtension)
+import System.Directory(doesFileExist,removeFile,getModificationTime)
+import System.Directory.Internal.Prelude(isDoesNotExistError)
+import System.FilePath(replaceExtension,(-<.>))
 import System.IO(Handle,hGetContents,stdin)
 import Language.Lsl.Internal.Optimize(optimizeScript,OptimizerOption(..))
 import Language.Lsl.Internal.XmlCreate hiding (emit)
@@ -32,38 +39,38 @@ import qualified Language.Lsl.Internal.XmlCreate as E
 
 emit s = E.emit s []
 
-readCompileEmit :: Handle -> IO ()
-readCompileEmit h =
+readCompileEmit :: Bool -> Handle -> IO ()
+readCompileEmit force h =
     do sourceInfo@(optimize,_,scriptInfo) <- readSourceList h
        results@(_,compiledScripts) <- compile sourceInfo
-       renderScriptsToFiles optimize compiledScripts scriptInfo
+       renderScriptsToFiles force sourceInfo compiledScripts
        putStr $ formatCompilationSummary results
 
-compileEmitSummarize sourceInfo@(optimize,_,scriptInfo) = do
+compileEmitSummarize force sourceInfo@(optimize,_,scriptInfo) = do
    results <- compile sourceInfo
-   renderScriptsToFiles optimize (snd results) scriptInfo
+   renderScriptsToFiles force sourceInfo (snd results)
    return (results,formatCompilationSummary results)
 
-compileAndEmit sourceInfo@(optimize,_,scriptInfo) = do
+compileAndEmit force sourceInfo@(optimize,_,scriptInfo) = do
    results <- compile sourceInfo
-   renderScriptsToFiles optimize (snd results) scriptInfo
+   renderScriptsToFiles force sourceInfo (snd results)
    return results
 
-main0 = readCompileEmit stdin
+main0 = readCompileEmit True stdin
 
-compile :: (Bool,[(String,String)],[(String,String)]) -> IO (AugmentedLibrary,[(String,Validity CompiledLSLScript)])
+compile :: (Bool,[(String,String)],[(String,String)]) -> IO (AugmentedLibrary,[(String,(Validity CompiledLSLScript,[String]))])
 compile (_,moduleInfo,scriptInfo) =
     do augLib <- loadModules moduleInfo
        scripts <- loadScripts (libFromAugLib augLib) scriptInfo
        return (augLib,scripts)
 
-formatCompilationSummary :: (AugmentedLibrary,[(String,Validity CompiledLSLScript)]) -> String
+formatCompilationSummary :: (AugmentedLibrary,[(String,(Validity CompiledLSLScript,[String]))]) -> String
 formatCompilationSummary (augLib, scripts) =
    let emitModules = emit "modules" (map formatModuleCompilationSummary augLib)
        emitScripts = emit "scripts" (map formatScriptCompilationSummary scripts)
    in emit "summary" [emitModules , emitScripts] ""
 
-formatScriptCompilationSummary (name,result) =
+formatScriptCompilationSummary (name,(result,_)) =
     emit "item"
         ([emit "name" [showString name]] ++
         case result of
@@ -125,19 +132,32 @@ readSourceList handle = do
     input <- hGetContents handle
     return $ either error id $ xmlAccept (tag "source_files" >> sources) input
 
-renderScriptsToFiles :: Bool -> [(String,Validity CompiledLSLScript)] -> [(String,String)] -> IO ()
-renderScriptsToFiles opt compiledScripts pathTable =
-    let scriptsToRender =
-         [(name, path, script) | (name, Just path,Right script) <-
-             map (\ (name,vs) -> (name, lookup name pathTable,vs)) compiledScripts]
-        scriptsToRemove =
-         [path | (Just path,Left _) <- map (\ (name,vs) -> (lookup name pathTable,vs)) compiledScripts]
+renderScriptsToFiles :: Bool -> (Bool,[(String,String)],[(String,String)]) -> [(String,(Validity CompiledLSLScript,[String]))] -> IO ()
+renderScriptsToFiles force srcInfo@(opt,libTable,pathTable) compiledScripts =
+--    let scriptsToRender = [(name, path, script) | (name, Just path,Right script) <-
+--             map (\ (name,(vs,deps)) -> (name, lookup name pathTable,vs)) compiledScripts]
+    let scriptsToRemove =
+         [path | (Just path,Left _) <- map (\ (name,(vs,_)) -> (lookup name pathTable,vs)) compiledScripts]
+        checkUpdate :: (String,(Validity CompiledLSLScript,[String])) -> IO (Maybe (String,FilePath,CompiledLSLScript))
+        checkUpdate (name,(Right s,deps)) = case lookup name pathTable of
+            Just p -> ((name,p,s) <$) <$> ((guard::Bool->Maybe ()) <$> ((force ||) <$> makeCheck (p -<.> "lsl") (p:(mapMaybe (flip lookup libTable) deps))))
+            Nothing -> return Nothing
+        checkUpdate (_,(Left _,_)) = return Nothing
     in do
+        scriptsToRender <- catMaybes <$> mapM checkUpdate compiledScripts
         t <- getZonedTime
         let stamp = "\n// " ++ formatTime defaultTimeLocale "%F %H:%M:%S" t
         mapM_ (\ (name,path,script) ->
             renderScriptToFile opt (name ++ " " ++ stamp) path script) scriptsToRender
         mapM_ (removeOutputScript) scriptsToRemove
+
+makeCheck :: FilePath -> [FilePath] -> IO Bool
+makeCheck p ps =
+    (getModificationTime p >>= anyNewerFile ps) `catch` (return . isDoesNotExistError)
+anyNewerFile :: [FilePath] -> UTCTime -> IO Bool
+anyNewerFile ps t = anyM (\p -> (> t) <$> getModTime p) ps
+getModTime :: FilePath -> IO UTCTime
+getModTime p = getModificationTime p <|> pure (UTCTime (ModifiedJulianDay 0) (secondsToDiffTime 0))
 
 renderScriptToFile opt stamp path script =
    let newPath = replaceExtension path ".lsl"

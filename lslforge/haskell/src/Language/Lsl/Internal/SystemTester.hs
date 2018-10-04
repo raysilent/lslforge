@@ -81,6 +81,6 @@ testSystem = do
                     let command = commandFromXML s
                         (e,state') = simStep state command
                     in (state',outputToXML e)
-            processLinesS (Left (worldDef,scripts,libFromAugLib augLib)) "quit" runStep
+            processLinesS (Left (worldDef,(map (\(a,(b,_))->(a,b)) scripts),libFromAugLib augLib)) "quit" runStep
     where init s = worldXMLAccept s $
                 (,) <$> req "source_files" sources <*> req "world-def" world
