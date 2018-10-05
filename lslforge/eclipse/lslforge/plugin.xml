@@ -317,7 +317,7 @@
    <extension
          point="org.eclipse.ui.ide.projectNatureImages">
       <image
-            icon="$nl$/icons/lsl_ovr.gif"
+            icon="icons/lsl_ovr.gif"
             id="lslforge.natureImage"
             natureId="lslforge.LSLForgeNature">
       </image>

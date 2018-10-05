@@ -144,9 +144,11 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 		private boolean isRelevant(IProject proj) {
 	    	if (proj == project) return true;
 	    	try {
-				for (IProject p : project.getReferencedProjects()) {
+	    		if (project.isOpen()) {
+				  for (IProject p : project.getReferencedProjects()) {
 					if (p == proj) return true;
-				}
+				  }
+	    		}
 				return false;
 			} catch (CoreException e) {
 				Log.error("problem getting referenced projects", e);
@@ -343,31 +345,32 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 			if (scriptRemovals != null) {
 				for (LSLForgeElement e : scriptRemovals) {
 					String name = resourceToLSLForgeName(e.getResource());
-					String path = e.getResource().getLocation().toOSString();
-					Log.debug("Removing file " + path); //$NON-NLS-1$
-					CompilationCommand_RemoveScript cmd = new CompilationCommand_RemoveScript();
-					cmd.el1 = new Tuple2<String, String>();
-					cmd.el1.el1 = name;
-					cmd.el1.el2 = path;
-					Result r = cserver.execute(cmd);
-					r.get(); // don't care about response...
+					if (e.getResource().getLocation()!=null) {
+						String path = e.getResource().getLocation().toOSString();
+						Log.debug("Removing file " + path); //$NON-NLS-1$
+						CompilationCommand_RemoveScript cmd = new CompilationCommand_RemoveScript();
+						cmd.el1 = new Tuple2<String, String>();
+						cmd.el1.el1 = name;
+						cmd.el1.el2 = path;
+						Result r = cserver.execute(cmd);
+						r.get(); // don't care about response...
+					}
 				}
 			}
 			
 			CompilationResponse response = null;
 			
-			if (recompileAll || (scriptChanges != null && scriptChanges.size() != 0)) {
+			if (project.isOpen() && (recompileAll || (scriptChanges != null && scriptChanges.size() != 0))) {
 				IProject[] ps = project.getReferencedProjects();
-				boolean optimize = 
-					LSLForgePlugin.getDefault().getPreferenceStore().getBoolean(OPTIMIZE);
-				final lslforge.cserver.SourceListBuilder builder = 
-					new lslforge.cserver.SourceListBuilder(optimize);
+				boolean optimize = LSLForgePlugin.getDefault().getPreferenceStore().getBoolean(OPTIMIZE);
+				final lslforge.cserver.SourceListBuilder builder = new lslforge.cserver.SourceListBuilder(optimize);
 				
 				for (IProject p : ps) {
-			        if (p.hasNature(LSLProjectNature.ID)) {
+			        if (p.isOpen() && p.hasNature(LSLProjectNature.ID)) {
 			        	p.accept(builder);
 			        }
 				}
+				
 				
 				builder.setModulesOnly(false);
 				project.accept(builder);
@@ -383,6 +386,7 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 
 					response = r.get();
 				} else {
+					
 					for (LSLForgeElement e : scriptChanges) {
 						CompilationCommand_UpdateScript cmd = new CompilationCommand_UpdateScript();
 						cmd.el1 = new Tuple2<String, String>();
@@ -445,31 +449,32 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 				project.accept(new IResourceVisitor() {
 					public boolean visit(IResource resource)
 							throws CoreException {
-						hasError(resource, map);
+                        hasError(resource, map);
 						return true;
 					}
 				});
 			}
+        } catch (org.eclipse.core.internal.resources.ResourceException ex) {
+            Log.error(ex);
 		} catch (CoreException e) {
 			Log.error(e);
 		} catch (Exception e) {
 			Log.error(e);
 		}
-		
-		LSLForgePlugin.getDefault().errorStatusChanged();
-		
-        WorkspaceJob job = new WorkspaceJob(Messages.ProjectNature_REFRESH) {
 
+		LSLForgePlugin.getDefault().errorStatusChanged();
+
+		WorkspaceJob job = new WorkspaceJob(Messages.ProjectNature_REFRESH) {
             @Override
 			public IStatus runInWorkspace(IProgressMonitor monitor)
                     throws CoreException {
                 project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
                 return new Status(IStatus.OK, "lslforge", Messages.ProjectNature_REFRESHED_OK); //$NON-NLS-1$
             }
-            
         };
-        
         job.schedule(100);
+		
+		
 	}
 	
 	public void configure() throws CoreException {
@@ -575,7 +580,7 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 	}
 	
 	private void hasError(IResource resource, Map<String,LinkedList<ErrInfo>> summary) {
-		if (resource instanceof IFile) {
+		if (resource instanceof IFile && resource.isAccessible()) {
 			IFile f = (IFile) resource;
 			if (f.exists()) {
 				try {
@@ -607,14 +612,13 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
                                         offsets[1]++;
                                     i.setAttribute(IMarker.CHAR_START,
                                             offsets[0]);
-                                    i
-                                            .setAttribute(IMarker.CHAR_END,
-                                                    offsets[1]);
+                                    i.setAttribute(IMarker.CHAR_END,
+                                            offsets[1]);
                                 }
                             }
                         }
 					    
-                        Log.info("Marked " + key); //$NON-NLS-1$
+                        //Log.info("Marked " + key); //$NON-NLS-1$
 					}
 				} catch (CoreException e) {
 					Log.error("error reading file", e); //$NON-NLS-1$
@@ -624,15 +628,18 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 	}
 	
 	public void resourceChanged(IResourceChangeEvent event) {
-	    Log.debug("resource changed in " + this.project.getName()); //$NON-NLS-1$
+	    if (this.project == null) return;
+		Log.debug("resource changed in " + this.project.getName()); //$NON-NLS-1$
 		final IResourceDelta delta = event.getDelta();
 
 		//DeltaVisitor dv = new DeltaVisitor();
 		BetterDeltaVisitor dv = new BetterDeltaVisitor(this.project);
 		boolean recompileAll = false;
 		try {
-		    delta.accept(dv);
-		    recompileAll = dv.isRecompileAll();
+		    if (delta!=null) {
+			  delta.accept(dv);
+		      recompileAll = dv.isRecompileAll();
+		    }
 		} catch (CoreException e) {
 			recompileAll = true;
 			Log.error(e);
@@ -666,18 +673,45 @@ public class LSLProjectNature implements IProjectNature, IResourceChangeListener
 
     public void scheduleBuild(final boolean recompileAll, final List<LSLForgeElement> scriptChanges,
     		final List<LSLForgeElement> scriptRemovals) {
-    	Log.debug("Scheduling build, recompileAll: " + (recompileAll ? "[yes]" : "[no]")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
-        WorkspaceJob job = new WorkspaceJob("EvaluateErrors") { //$NON-NLS-1$
-
-        	@Override
-			public IStatus runInWorkspace(IProgressMonitor monitor) {
-        		checkForErrors(recompileAll, scriptChanges, scriptRemovals);
-        		return new Status(IStatus.OK,LSLFORGE, Messages.ProjectNature_OK);
-        	}
-        	
-        };
+    	//Log.debug("Scheduling build, recompileAll: " + (recompileAll ? "[yes]" : "[no]")); //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$
         
-        job.schedule();
+    	
+    	
+    	StringBuilder b = new StringBuilder();
+    	b.append((recompileAll ? "[all]" : "[some]"));
+    	int count = 0;
+    	
+    	if (scriptRemovals != null) {
+			for (LSLForgeElement e : scriptRemovals) {
+			  if (e.getResource().getLocation()!=null) {
+				String path = e.getResource().getProjectRelativePath().toOSString();
+				if (b.length()>0) b.append("; ");
+				b.append("[x] "+path);
+			  }
+			}
+			count+=scriptRemovals.size();
+    	}
+    	if (scriptChanges != null) {
+    		for (LSLForgeElement e: scriptChanges) {
+  			  if (e.getResource().getLocation()!=null) {
+  				String path = e.getResource().getProjectRelativePath().toOSString();
+  				if (b.length()>0) b.append("; ");
+  				b.append("[~] "+path);
+  			  }
+    		}
+    		count+=scriptChanges.size();
+    	}
+    	
+    	if (recompileAll || count>0) {
+	    	WorkspaceJob job = new WorkspaceJob("Evaluate Errors ["+Integer.toString(count)+"] "+b.toString()) { //$NON-NLS-1$
+	        	@Override
+				public IStatus runInWorkspace(IProgressMonitor monitor) {
+	        		checkForErrors(recompileAll, scriptChanges, scriptRemovals);
+	        		return new Status(IStatus.OK,LSLFORGE, Messages.ProjectNature_OK);
+	        	}
+	        };
+	        job.schedule();
+    	}
     }
 	
 	public void setProject(IProject project) {

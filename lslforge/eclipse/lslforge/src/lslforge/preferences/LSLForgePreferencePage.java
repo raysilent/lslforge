@@ -48,8 +48,10 @@ public class LSLForgePreferencePage extends FieldEditorPreferencePage implements
             IProject[] p = ResourcesPlugin.getWorkspace().getRoot().getProjects();
             for (int i = 0; i < p.length; i++) {
                 try {
-                    LSLProjectNature nature = (LSLProjectNature) p[i].getNature(LSLProjectNature.ID);
-                    if (nature != null) nature.scheduleBuild(true,null,null);
+                	if (p[i].isOpen()) {
+                      LSLProjectNature nature = (LSLProjectNature) p[i].getNature(LSLProjectNature.ID);
+                      if (nature != null) nature.scheduleBuild(true,null,null);
+                	}
                 } catch (CoreException e) {
                     Log.error("problem determining project nature", e); //$NON-NLS-1$
                 }

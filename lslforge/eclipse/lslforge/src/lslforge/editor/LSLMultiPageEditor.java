@@ -308,7 +308,7 @@ public class LSLMultiPageEditor extends MultiPageEditorPart implements IResource
 							}
 							
 							//Now toss the compiled version
-							if(compiledEditor != null) {
+							if(compiledEditor != null && compiledPage>=0 && compiledPage < getPageCount()) {
 								removePage(compiledPage);
 								compiledEditor = null;
 							}
@@ -344,15 +344,16 @@ public class LSLMultiPageEditor extends MultiPageEditorPart implements IResource
 	
 	private List<IResourceDelta> getDeltasForPath(IPath path, IResourceDelta delta, List<IResourceDelta> matches) {
 		//Check ourselves
-		if(delta.getFullPath().equals(path)) matches.add(delta);
-		
-		//Now check any children entries
-		if(delta.getAffectedChildren().length > 0) {
-			for(IResourceDelta childDelta: delta.getAffectedChildren()) {
-				matches = getDeltasForPath(path, childDelta, matches);
+		if (delta!=null) {
+			if(delta.getFullPath().equals(path)) matches.add(delta);
+			
+			//Now check any children entries
+			if(delta.getAffectedChildren().length > 0) {
+				for(IResourceDelta childDelta: delta.getAffectedChildren()) {
+					matches = getDeltasForPath(path, childDelta, matches);
+				}
 			}
 		}
-		
 		return matches;
 	}
 	

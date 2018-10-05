@@ -73,7 +73,7 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
     private ProjectionSupport fProjectionSupport;
     
     private LSLMultiPageEditor parentEditor = null;
-    private LSLForgeOutlinePage outlinePage;
+    private LSLForgeOutlinePage outlinePage = null;
     
     private boolean forceReadOnly = false;
     
@@ -205,7 +205,9 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
         IResource resource = (IResource) getEditorInput().getAdapter(IResource.class);
         if (resource != null) {
         	try {
-				return (LSLProjectNature) resource.getProject().getNature(LSLProjectNature.ID);
+				if (resource.getProject().isOpen()) {
+        		return (LSLProjectNature) resource.getProject().getNature(LSLProjectNature.ID);
+				}
 			} catch (CoreException e) {
 				Log.error("can't get project nature", e); //$NON-NLS-1$
 			}
@@ -315,6 +317,7 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
     }
     
     public void annotateErrs(List<ErrInfo> errs) {
+    	if (errs == null) return;
     	ISourceViewer sourceViewer = getSourceViewer();
     	if (sourceViewer == null) return;
         IAnnotationModel am = sourceViewer.getAnnotationModel(); 
@@ -327,7 +330,7 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
                 am.removeAnnotation(ann);
         }
         
-        //if (errs != null) {
+        
         for (ErrInfo err : errs) {
             ErrInfo_ErrInfo e = (ErrInfo_ErrInfo) err;
             if (e.el1 instanceof Maybe_Just) {
@@ -344,7 +347,7 @@ public class LSLForgeEditor extends TextEditor implements SourceViewerConfigurat
                 am.addAnnotation(ann, pos);
             }
         }
-        //}
+        
     }
     
     @Override

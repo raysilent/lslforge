@@ -306,7 +306,7 @@ public class LSLForgePlugin extends AbstractUIPlugin implements IPropertyChangeL
     }
     
     private void setExecutablePath(String path, String version) {
-        Log.info("setExecutablePath: " + path+", Version: "+version); //$NON-NLS-1$
+        Log.info("Executable: " + path+", Version: "+version); //$NON-NLS-1$
         this.executablePath = path;
     }
     

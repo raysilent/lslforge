@@ -142,15 +142,15 @@ public class OutlineBuilder
 		LSLProjectNature n = null;
 
 		try {
-			n = (LSLProjectNature) f.getProject().getNature(LSLProjectNature.ID);
-			if (n == null) {
+			if (f.getProject().isOpen()) {
+			  n = (LSLProjectNature) f.getProject().getNature(LSLProjectNature.ID);
+			  if (n == null) {
 				// Try to add the nature
 				LSLProjectNature.fixProjectNature(f.getProject());
 				n = (LSLProjectNature) f.getProject().getNature(LSLProjectNature.ID);
+			  }
+			  if (n == null) throw new Exception("This project does not have LSLForge support enabled."); //$NON-NLS-1$
 			}
-
-			if (n == null) throw new Exception("This project does not have LSLForge support enabled."); //$NON-NLS-1$
-
 		} catch (CoreException e1) {
 			throw new Exception("can't get project nature!", e1); //$NON-NLS-1$
 		}
@@ -159,14 +159,15 @@ public class OutlineBuilder
 			Result r = n.getCompilationServer().execute(cmd);
 			return r.get();
 		} catch (Exception e1) {
-			throw new Exception("Unable to retrieve compile result: "+cmd); //$NON-NLS-1$
+			throw new Exception("Unable to retrieve compile result: ", e1); //$NON-NLS-1$
 		}
 	}
 
 	private void parseErrors(IResource resource) {
+		if (!resource.isAccessible()) return;
 		try {
-			resource.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
-			
+			//resource.deleteMarkers(IMarker.PROBLEM, true, IResource.DEPTH_INFINITE);
+			resource.deleteMarkers(LSLProjectNature.LSLFORGE_PROBLEM, true, IResource.DEPTH_INFINITE);
 			for(ErrInfo ei: errors) {
 				ErrInfo_ErrInfo err = (ErrInfo_ErrInfo)ei;
 				
