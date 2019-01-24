@@ -4,8 +4,9 @@
 *.hi
 *.o
 
-#Eclipse-related files/folders
-.metadata
+#Eclipse- and VSCode-related files/folders
+.metadata/
+.vscode/
 
 #Update site build output
 lslforge/eclipse/update-site/dist/*
