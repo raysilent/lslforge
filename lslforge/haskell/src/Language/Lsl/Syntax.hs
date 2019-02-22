@@ -741,7 +741,7 @@ compileStatement (Ctx ctx (Return (Just expr))) = do
            (LLString,LLKey) -> return ()
            (LLKey,LLString) -> return ()
            (LLInteger,LLFloat) -> return ()
-           (x,y) | x == y -> return ()
+           (x,y) | x /= LLVoid && x == y -> return ()
                  | otherwise -> (vsmAddErr (ctx,"inappropriate return type for function/handler"))
     put'vsBranchReturns True
     return True
