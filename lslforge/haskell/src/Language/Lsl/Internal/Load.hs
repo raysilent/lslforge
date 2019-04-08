@@ -1,12 +1,17 @@
 module Language.Lsl.Internal.Load(
+    parseFile,
+    dModNames,
+    dMods,
     loadScript,
     loadScripts,
     loadModules) where
 
 import Control.Exception(SomeException(..),tryJust)
+import Data.List(union)
+import Data.Maybe(fromMaybe)
 import Language.Lsl.Internal.BuiltInModules(avEventGen)
 import Language.Lsl.Syntax(compileLSLScript',compileLibrary,
-    Library,CompiledLSLScript,Validity,CodeErrs(..))
+    Library,CompiledLSLScript,Validity,CodeErrs(..),giNamesFromScript,giNamesFromModule)
 import Language.Lsl.Parse(parseModule, parseScript)
 
 parseFiles p files = mapM (parseFile p) files
@@ -31,12 +36,20 @@ loadModules files =
 --        return (augLib ++ (map (\ (n,err) -> (n,Left [err])) bad))
 --        --return (validated ++ (map (\ (n,err) -> (n,Left err)) bad))
 
-loadScript ::  Library -> (t,String) -> IO (t,Validity CompiledLSLScript)
+loadScript ::  Library -> (t,String) -> IO (t,(Validity CompiledLSLScript,[String]))
 loadScript lib sinfo =
      parseFile parseScript sinfo
      >>= \ r -> case r of
-         (t,Left e) -> return (t,Left $ CodeErrs [e])
-         (t,Right script) -> return (t, compileLSLScript' lib script)
+         (t,Left e) -> return (t,(Left $ CodeErrs [e],[]))
+         (t,Right script) -> return (t, (compileLSLScript' lib script,dModNames lib $ giNamesFromScript script))
+--    where
+dModNames :: Library -> [String] -> [String]
+dModNames lib [] = []
+dModNames lib mods = foldl union mods $ map (dModNames lib . (dMods lib)) mods
+dMods :: Library -> String -> [String]
+dMods lib mod =
+    fromMaybe [] $ giNamesFromModule <$> (lookup mod lib >>= either (\_ -> Nothing) (\r -> Just r))
+
 loadScripts library = mapM (loadScript library)
 
 -- loadScripts library files =

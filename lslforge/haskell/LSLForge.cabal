@@ -39,6 +39,7 @@ executable LSLForge
                , template-haskell >= 2.4.0.0 && < 2.12
                , syb >= 0.1.0.0 && < 0.7
                , fclabels >= 2.0 && < 2.1
+               , monad-loops
   main-is:        LslForge.hs
   hs-source-dirs: src
   other-modules:

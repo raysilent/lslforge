@@ -39,7 +39,7 @@ prepSingleScript s = do
     let path = dir </> "scripts" </> s
     (lib,scripts) <- compile (False,[],[(s,path)])
     assertEqual "should only have one compiled script" 1 (length scripts)
-    let [(_,script)] = scripts
+    let [(_,(script,_))] = scripts
     return script
 
 prepSingleModule s = do
