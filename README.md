@@ -35,12 +35,25 @@ This fork is to maintain LSL definitions for functions and constants, as well as
         * ENV_NO_EXPERIENCE_LAND
         * ENV_VALIDATION_FAIL
         * ENV_NO_EXPERIENCE_LAND
+        * ENV_THROTTLE (Mentioned @ wiki but not implemented?)
         * ENVIRONMENT_DAYINFO
         * INVENTORY_SETTING
         * SKY_CLOUD_TEXTURE
         * SKY_MOON_TEXTURE
         * SKY_SUN_TEXTURE
         * WATER_NORMAL_TEXTURE
+        * (Bakes on Mesh related):
+            * IMG_USE_BAKED_HEAD
+            * IMG_USE_BAKED_UPPER
+            * IMG_USE_BAKED_LOWER
+            * IMG_USE_BAKED_EYES
+            * IMG_USE_BAKED_SKIRT
+            * IMG_USE_BAKED_HAIR
+            * IMG_USE_BAKED_LEFTARM
+            * IMG_USE_BAKED_LEFTLEG
+            * IMG_USE_BAKED_AUX1
+            * IMG_USE_BAKED_AUX2
+            * IMG_USE_BAKED_AUX3
 * 2018-09-16 LSLForge **0.1.9.6** (**Windows**, **Linux** (Thanks [@Trapez](https://github.com/Trapez)), **Mac** (Thanks [@PellSmit](https://github.com/PellSmit)))
     * Animesh Functions and Constants:
         * llStartObjectAnimation(string anim);
@@ -96,6 +109,7 @@ The official group for LSLForge Editor tool is [LSLForge Users](secondlife:///ap
 
 All the latest  Eclipse installations were found working:
 
+* Eclipse IDE 2019‑06 R (4.12.0)
 * Eclipse Photon (4.8.0)
 * Eclipse Oxygen 
 
@@ -122,6 +136,7 @@ To install a plugin into Eclipse, choose ``Help`` > ``Install New Software``. Cl
     (In case of bugs please report right to the https://github.com/raysilent/lslforge/ repo.)
 
 * Alternatively you may switch to a development fork and try a specific version since ``0.1.8`` (including work in progress branches):
+    * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.7/eclipse/``
     * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.6/eclipse/``
     * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.5/eclipse/``
     * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.4/eclipse/``
@@ -195,11 +210,15 @@ In the main project that uses ``ModulesProject``, place a checkmark along its na
 
 ### Requirements
 
-To compile the native LSLForge binary, you must have the cross-platform Haskell `Stack` tool installed. Stack can then ensure that the correct compiler and dependencies for the project will be automatically downloaded and installed for you.
+To compile the native LSLForge binary, you must have the cross-platform Haskell `Stack` tool installed.
+
+* Since LSLForge `0.1.9.7` Stack >= `1.11` is required.
+
+Stack can then ensure that the correct compiler and dependencies for the project will be automatically downloaded and installed for you.
 
 To install Stack, please visit the [Stack Homepage](https://www.haskellstack.org/) and follow the instructions. It is likely that you can find a package available for many package managers e.g. chocolatey, homebrew and pacman, but check before installing that their stack version is up to date.
 
-#### Configure stack folder if necessary:
+#### Configure Stack if desired:
 * ``STACK_ROOT`` environment variable if you do not want stack files appear under ``C:\sr`` under Windows.
 * To configure downloaded programs location, open stack's root `config.yaml` and add a line `local-programs-path: <path>` with the path desired, after that commands like `stack ghci` will download files right into that folder
 * To configure where `stack install` will place the files, add the following line to `config.yaml`: ``local-bin-path: <path>`` with the path desired. This folder may be added to the ``PATH`` environment variable. (The reminder will be given after ``stack install`` copies the file there).
