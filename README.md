@@ -6,13 +6,14 @@ An LSL Script Editor/compiler for Second Life's Scripting Language.
 
 LSLForge is a fork of the popular LSLPlus editing evironment, to provide Linden Scripting Language (LSL) support in Eclipse.
 
-## Fork Purpose
+## Fork's Purpose
 
-This fork is to maintain LSL definitions for functions and constants, as well as maintaining Eclipse Plugin Update Site.
+`raysilent`'s fork is to maintain latest LSL definitions for functions and constants, fix bugs, as well as keep Eclipse Plugin Update Site up-to-date. After the tests are finished, the repo is merged into `elnewfie`'s original one.
 
 ### News (newest first)
 
-* **0.1.9.7**
+* **0.1.9.7** (work in progress)
+    * **Windows** & **Mac** executables only at this moment. Linux will have an older version of exectuable that is not supporting any new features or bug fixes.
     * Fixed bugs (Thanks [@PellSmit](https://github.com/PellSmit)))
     * New functions and constants:
         * llGetDayLength
@@ -107,36 +108,36 @@ The official group for LSLForge Editor tool is [LSLForge Users](secondlife:///ap
 
 ### Eclipse Plugin
 
-All the latest  Eclipse installations were found working:
+All the latest Eclipse installations were found working:
 
 * Eclipse IDE 2019‑06 R (4.12.0)
 * Eclipse Photon (4.8.0)
-* Eclipse Oxygen 
+* Eclipse Oxygen
 
 > NOTE: Oomph seems to restore LSLForge native setting despite attempts to overwrite the field. The only workaround for now is to check ``[X] Skip automatic task execution at startup time`` under Oomph > Setup Tasks in Preferences. 
 
 Platforms that used to work but **not tested recently**:
 
-* Eclipse Juno RC2 (4.2.2)
-* Eclipse Luna (4.4.0)
-* Eclipse Mars.1 (4.5.1)
-* Eclipse Mars.2 (4.5.2)
 * Eclipse Neon (4.6.0)
+* Eclipse Mars.2 (4.5.2)
+* Eclipse Mars.1 (4.5.1)
+* Eclipse Luna (4.4.0)
+* Eclipse Juno RC2 (4.2.2)
 
 #### How to Install
 
 To install a plugin into Eclipse, choose ``Help`` > ``Install New Software``. Click ``Add...`` and enter the link for location:
 
-* For the tested and reported to be working releases use:
+* For the tested and reported to be working releases use `elnewfie`'s master repo:
     * ``https://raw.githubusercontent.com/elnewfie/lslforge/master/eclipse/``
 
-* For releases that are currently tested:
+* For releases that are currently being tested use `raysilent`'s master repo:
     * ``https://raw.githubusercontent.com/raysilent/lslforge/master/eclipse/``
 
     (In case of bugs please report right to the https://github.com/raysilent/lslforge/ repo.)
 
 * Alternatively you may switch to a development fork and try a specific version since ``0.1.8`` (including work in progress branches):
-    * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.7/eclipse/``
+    * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.7/eclipse/`` (Reinstall if you already have the version)
     * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.6/eclipse/``
     * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.5/eclipse/``
     * ``https://raw.githubusercontent.com/raysilent/lslforge/0.1.9.4/eclipse/``
@@ -231,9 +232,11 @@ You will need to enter `stack setup` beforehand, if you have freshly installed S
 
 ### Post-compilation
 
-If your "install" was successful, an executable will appear at ``%APPDATA%\local\bin`` folder for Windows, or ``$HOME/.local/bin`` for other platforms (look at the message after install) - unless you changed the ``local-bin-path`` parameter in ``confif.yaml`` to override default location
+If your "install" was successful, an executable will appear at ``%APPDATA%\local\bin`` folder for Windows, or ``$HOME/.local/bin`` for other platforms (look at the message after install) - unless you changed the ``local-bin-path`` parameter in ``config.yaml`` to override default location.
 
 Now you only need to specify this executable in Eclipse, ``Preferences`` > ``LSLForge`` settings.
+
+> If you enable Eclipse **Error Log** View, it will print out current version of the executable in use, as well as its actual location.  
 
 **Eclipse should be restarted**
 
@@ -242,3 +245,32 @@ Now you only need to specify this executable in Eclipse, ``Preferences`` > ``LSL
 You can optionally run the LSLForge binary tests by executing `stack test` in the terminal, from the haskell subdirectory.
 
 The tests require that the `LSLFORGE_TEST_DATA` environment variable be set for the terminal session, but for casual needs you can also use `LSLFORGE_TEST_DATA=../testing/data stack test`.
+
+## Eclipse Plug-in Compilation
+
+* Change version numbers if necessary
+* Move existing plugin files from `eclipse\` to `eclipse\archive\x.x.x\`.
+
+* Eclipse for RCP and RAP Developers - Using `Luna SR2`
+    * Use empty workspace
+    * Import projects from `lslforge\eclipse\` (without copying)
+    * Go to `update-site`'s project folder and run `clean.bat` to delete previously generated files
+    * Open `update-site\site.xml` click the tree element and then `Build All`
+        * Generated files are:
+            * `features`
+            * `plugins`
+            * `artifacts.jar`
+            * `content.jar`
+        * Move generated files to `eclipse\`
+        
+        * Copy `index.html` (static file) to `eclipse\`
+
+* Test generated update site with a fresh installation of Eclipse using Local path for plugin:
+    * Switch Eclipse for RCP and RAP Developers workspace to a newly made
+    * Help > Install New Software
+        * Add.. update site, providing Local location of `eclipse` folder as a source
+        * Install newly made LSLForge plugin
+    * Restart Eclipse
+    * Switch Perspective to LSLForge
+        * Create new LSLForge Project
+        * Create `*.lslp` files and see Error Log View

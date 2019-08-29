@@ -4,7 +4,7 @@ echo.
 echo ---- Compiling Haskell...
 echo.
 cd haskell
-stack install
+stack install --executable-stripping
 
 cd ..
 
