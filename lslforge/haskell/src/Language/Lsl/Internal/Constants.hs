@@ -834,6 +834,8 @@ allConstants = [
     Constant "STRING_TRIM" (IVal 0x03),
     Constant "STRING_TRIM_HEAD" (IVal 0x01),
     Constant "STRING_TRIM_TAIL" (IVal 0x02),
+    Constant "TARGETED_EMAIL_ROOT_CREATOR" (IVal 1),
+    Constant "TARGETED_EMAIL_OBJECT_OWNER" (IVal 2),
     Constant "TEXTURE_BLANK" (KVal $ LSLKey "5748decc-f629-461c-9a36-a35a221fe21f"),
     Constant "TEXTURE_DEFAULT" (KVal $ LSLKey "89556747-24cb-43ed-920b-47caed15465f"),
     Constant "TEXTURE_MEDIA" (KVal $ LSLKey "8b5fec65-8d8d-9dc5-cda8-8fdf2716e361"),

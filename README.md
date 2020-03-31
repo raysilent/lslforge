@@ -16,45 +16,48 @@ LSLForge is a fork of the popular LSLPlus editing evironment, to provide Linden 
     * **Windows** & **Mac** executables only at this moment. Linux will have an older version of exectuable that is not supporting any new features or bug fixes.
     * Fixed bugs (Thanks [@PellSmit](https://github.com/PellSmit)))
     * New functions and constants:
-        * llGetDayLength
-        * llGetDayOffset
-        * llGetMoonDirection
-        * llGetMoonRotation
-        * llGetRegionDayLength
-        * llGetRegionDayOffset
-        * llGetRegionMoonDirection
-        * llGetRegionMoonRotation
-        * llGetRegionSunDirection
-        * llGetRegionSunRotation
-        * llGetSunRotation
-        * llReplaceAgentEnvironment
-        * llSetAgentEnvironment
-        * ENV_NOT_EXPERIENCE
-        * ENV_NO_EXPERIENCE_PERMISSION
-        * ENV_NO_ENVIRONMENT
-        * ENV_INVALID_AGENT
-        * ENV_NO_EXPERIENCE_LAND
-        * ENV_VALIDATION_FAIL
-        * ENV_NO_EXPERIENCE_LAND
-        * ENV_THROTTLE (Mentioned @ wiki but not implemented?)
-        * ENVIRONMENT_DAYINFO
-        * INVENTORY_SETTING
-        * SKY_CLOUD_TEXTURE
-        * SKY_MOON_TEXTURE
-        * SKY_SUN_TEXTURE
-        * WATER_NORMAL_TEXTURE
+        * `llGetDayLength`
+        * `llGetDayOffset`
+        * `llGetMoonDirection`
+        * `llGetMoonRotation`
+        * `llGetRegionDayLength`
+        * `llGetRegionDayOffset`
+        * `llGetRegionMoonDirection`
+        * `llGetRegionMoonRotation`
+        * `llGetRegionSunDirection`
+        * `llGetRegionSunRotation`
+        * `llGetSunRotation`
+        * `llReplaceAgentEnvironment`
+        * `llSetAgentEnvironment`
+        * `llTargetedEmail` and its consants:
+            * `TARGETED_EMAIL_ROOT_CREATOR`
+            * `TARGETED_EMAIL_OBJECT_OWNER`
+        * `ENV_NOT_EXPERIENCE`
+        * `ENV_NO_EXPERIENCE_PERMISSION`
+        * `ENV_NO_ENVIRONMENT`
+        * `ENV_INVALID_AGENT`
+        * `ENV_NO_EXPERIENCE_LAND`
+        * `ENV_VALIDATION_FAIL`
+        * `ENV_NO_EXPERIENCE_LAND`
+        * `ENV_THROTTLE`
+        * `ENVIRONMENT_DAYINFO`
+        * `INVENTORY_SETTING`
+        * `SKY_CLOUD_TEXTURE`
+        * `SKY_MOON_TEXTURE`
+        * `SKY_SUN_TEXTURE`
+        * `WATER_NORMAL_TEXTURE`
         * (Bakes on Mesh related):
-            * IMG_USE_BAKED_HEAD
-            * IMG_USE_BAKED_UPPER
-            * IMG_USE_BAKED_LOWER
-            * IMG_USE_BAKED_EYES
-            * IMG_USE_BAKED_SKIRT
-            * IMG_USE_BAKED_HAIR
-            * IMG_USE_BAKED_LEFTARM
-            * IMG_USE_BAKED_LEFTLEG
-            * IMG_USE_BAKED_AUX1
-            * IMG_USE_BAKED_AUX2
-            * IMG_USE_BAKED_AUX3
+            * `IMG_USE_BAKED_HEAD`
+            * `IMG_USE_BAKED_UPPER`
+            * `IMG_USE_BAKED_LOWER`
+            * `IMG_USE_BAKED_EYES`
+            * `IMG_USE_BAKED_SKIRT`
+            * `IMG_USE_BAKED_HAIR`
+            * `IMG_USE_BAKED_LEFTARM`
+            * `IMG_USE_BAKED_LEFTLEG`
+            * `IMG_USE_BAKED_AUX1`
+            * `IMG_USE_BAKED_AUX2`
+            * `IMG_USE_BAKED_AUX3`
 * 2018-09-16 LSLForge **0.1.9.6** (**Windows**, **Linux** (Thanks [@Trapez](https://github.com/Trapez)), **Mac** (Thanks [@PellSmit](https://github.com/PellSmit)))
     * Animesh Functions and Constants:
         * llStartObjectAnimation(string anim);
